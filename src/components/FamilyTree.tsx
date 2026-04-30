@@ -22,7 +22,7 @@ export default function FamilyTree() {
   const edges: Edge[] = []
 
   return (
-    <div style={{ width: '100%', height: '600px' }}>
+    <div className="w-full" style={{ height: '600px' }}>
       <ReactFlow nodes={nodes} edges={edges}>
         <Background />
         <Controls />
