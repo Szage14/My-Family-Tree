@@ -7,6 +7,7 @@ import ReactFlow, {
   Edge,
 } from 'reactflow'
 import 'reactflow/dist/style.css'
+import styles from './FamilyTree.module.css'
 import { familyMock } from '@/data/familyMock'
 import { FamilyMember } from '@/types/family'
 
@@ -22,7 +23,7 @@ export default function FamilyTree() {
   const edges: Edge[] = []
 
   return (
-    <div className="w-full" style={{ height: '600px' }}>
+    <div className={styles.container}>
       <ReactFlow nodes={nodes} edges={edges}>
         <Background />
         <Controls />
