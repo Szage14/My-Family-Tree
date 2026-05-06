@@ -4,6 +4,8 @@ import { useId, useState, type FormEvent } from 'react'
 import Link from 'next/link'
 import { Lexend } from 'next/font/google'
 import styles from './LoginPage.module.css'
+import VerificationPending from './VerificationPending'
+import { getSupabaseClient } from '@/lib/supabaseClient'
 
 const lexend = Lexend({
   subsets: ['latin'],
@@ -12,16 +14,12 @@ const lexend = Lexend({
 
 type FormErrors = {
   email?: string
-  password?: string
   form?: string
 }
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function validate(values: {
-  email: string
-  password: string
-}): FormErrors {
+function validate(values: { email: string }): FormErrors {
   const nextErrors: FormErrors = {}
 
   if (!values.email.trim()) {
@@ -30,38 +28,28 @@ function validate(values: {
     nextErrors.email = 'Enter a valid email address.'
   }
 
-  if (!values.password) {
-    nextErrors.password = 'Enter your password.'
-  } else if (values.password.length < 8) {
-    nextErrors.password = 'Use at least 8 characters.'
-  }
-
   return nextErrors
 }
 
 export default function LoginPage() {
   const emailId = useId()
-  const passwordId = useId()
-  const rememberId = useId()
 
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [rememberMe, setRememberMe] = useState(true)
-  const [showPassword, setShowPassword] = useState(false)
-  const [touched, setTouched] = useState({ email: false, password: false })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [linkSent, setLinkSent] = useState(false)
+  const [submittedEmail, setSubmittedEmail] = useState('')
+  const [touched, setTouched] = useState({ email: false })
   const [errors, setErrors] = useState<FormErrors>({})
 
   const visibleErrors = {
     email: touched.email ? errors.email : undefined,
-    password: touched.password ? errors.password : undefined,
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
 
-    const nextErrors = validate({ email, password })
-    setTouched({ email: true, password: true })
+    const nextErrors = validate({ email })
+    setTouched({ email: true })
     setErrors(nextErrors)
 
     if (Object.keys(nextErrors).length > 0) {
@@ -71,11 +59,40 @@ export default function LoginPage() {
     setIsSubmitting(true)
     setErrors({})
 
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 1200)
-    })
+    try {
+      const supabase = getSupabaseClient()
+      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: redirectTo,
+          shouldCreateUser: false,
+        },
+      })
 
-    setIsSubmitting(false)
+      if (error) {
+        setErrors({ form: error.message })
+        setIsSubmitting(false)
+        return
+      }
+
+      setSubmittedEmail(email.trim())
+      setLinkSent(true)
+    } catch {
+      setErrors({ form: 'Unable to send magic link. Try again.' })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (linkSent) {
+    return (
+      <VerificationPending
+        email={submittedEmail}
+        title="Check your email to sign in."
+        description="Supabase sent a magic link to your inbox. Click it to finish signing in."
+      />
+    )
   }
 
   return (
@@ -93,31 +110,29 @@ export default function LoginPage() {
               </div>
               <div>
                 <p className={styles.eyebrow}>Secure Access</p>
-                <p className={styles.brandSubtext}>
-                  Family Tree Platform
-                </p>
+                <p className={styles.brandSubtext}>Family Tree Platform</p>
               </div>
             </div>
 
             <div className={styles.heroCopy}>
               <h1 className={styles.title}>Welcome back.</h1>
               <p className={styles.description}>
-                Sign in to continue building, organizing, and exploring your
-                family network with a workspace designed for clarity and speed.
+                Enter your email and we&apos;ll send you a one-time magic link. No password
+                needed.
               </p>
 
               <ul className={styles.featureList} aria-label="Login benefits">
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Secure sign-in backed by Supabase authentication.
+                  Passwordless sign-in with Supabase.
                 </li>
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Magic Link email verification and passwordless options.
+                  The link creates your session automatically.
                 </li>
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Built for production-grade authentication and security.
+                  Works with the same Supabase account you registered with.
                 </li>
               </ul>
             </div>
@@ -125,11 +140,11 @@ export default function LoginPage() {
             <div className={styles.trustRow} aria-label="Security highlights">
               <span className={styles.trustPill}>
                 <span className={styles.trustDot} aria-hidden="true" />
-                Encrypted session-ready flow
+                Magic-link login
               </span>
               <span className={styles.trustPill}>
                 <span className={styles.trustDot} aria-hidden="true" />
-                Responsive across all screens
+                No password required
               </span>
             </div>
           </div>
@@ -139,7 +154,7 @@ export default function LoginPage() {
               <header className={styles.formHeader}>
                 <h2 className={styles.formTitle}>Sign in to your account</h2>
                 <p className={styles.formSubtitle}>
-                  Use your email and password to access the dashboard.
+                  Enter your email to receive a sign-in link.
                 </p>
               </header>
 
@@ -150,12 +165,7 @@ export default function LoginPage() {
                   </label>
                   <div className={styles.inputShell}>
                     <span className={styles.fieldIcon} aria-hidden="true">
-                      <svg
-                        className={styles.iconSvg}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        aria-hidden="true"
-                      >
+                      <svg className={styles.iconSvg} viewBox="0 0 24 24" fill="none" aria-hidden="true">
                         <path
                           d="M4 7.5A2.5 2.5 0 0 1 6.5 5h11A2.5 2.5 0 0 1 20 7.5v9A2.5 2.5 0 0 1 17.5 19h-11A2.5 2.5 0 0 1 4 16.5v-9Z"
                           stroke="currentColor"
@@ -185,7 +195,7 @@ export default function LoginPage() {
                         if (touched.email) {
                           setErrors((current) => ({
                             ...current,
-                            ...validate({ email: event.target.value, password }),
+                            ...validate({ email: event.target.value }),
                           }))
                         }
                       }}
@@ -193,7 +203,7 @@ export default function LoginPage() {
                         setTouched((current) => ({ ...current, email: true }))
                         setErrors((current) => ({
                           ...current,
-                          ...validate({ email, password }),
+                          ...validate({ email }),
                         }))
                       }}
                       aria-describedby={visibleErrors.email ? `${emailId}-error` : undefined}
@@ -206,122 +216,26 @@ export default function LoginPage() {
                   ) : null}
                 </div>
 
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel} htmlFor={passwordId}>
-                    Password
-                  </label>
-                  <div className={styles.inputShell}>
-                    <span className={styles.fieldIcon} aria-hidden="true">
-                      <svg
-                        className={styles.iconSvg}
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M7.5 10.5V8.75a4.5 4.5 0 1 1 9 0v1.75"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                        />
-                        <rect
-                          x="5"
-                          y="10.5"
-                          width="14"
-                          height="9"
-                          rx="2.4"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                        />
-                      </svg>
-                    </span>
-                    <input
-                      id={passwordId}
-                      className={styles.input}
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      autoComplete="current-password"
-                      disabled={isSubmitting}
-                      placeholder="Enter your password"
-                      value={password}
-                      onChange={(event) => {
-                        setPassword(event.target.value)
-                        if (touched.password) {
-                          setErrors((current) => ({
-                            ...current,
-                            ...validate({ email, password: event.target.value }),
-                          }))
-                        }
-                      }}
-                      onBlur={() => {
-                        setTouched((current) => ({ ...current, password: true }))
-                        setErrors((current) => ({
-                          ...current,
-                          ...validate({ email, password }),
-                        }))
-                      }}
-                      aria-describedby={
-                        visibleErrors.password ? `${passwordId}-error` : undefined
-                      }
-                    />
-                    <button
-                      className={styles.toggleButton}
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => setShowPassword((current) => !current)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {visibleErrors.password ? (
-                    <p id={`${passwordId}-error`} className={styles.fieldError} role="alert">
-                      {visibleErrors.password}
-                    </p>
-                  ) : null}
-                </div>
+                {errors.form ? (
+                  <p className={styles.fieldError} role="alert">
+                    {errors.form}
+                  </p>
+                ) : null}
 
-                <div className={styles.metaRow}>
-                  <label className={styles.rememberLabel} htmlFor={rememberId}>
-                    <input
-                      id={rememberId}
-                      className={styles.checkbox}
-                      type="checkbox"
-                      disabled={isSubmitting}
-                      checked={rememberMe}
-                      onChange={(event) => setRememberMe(event.target.checked)}
-                    />
-                    Remember me
-                  </label>
-
-                  <Link className={styles.link} href="/forgot-password">
-                    Forgot password?
-                  </Link>
-                </div>
-
-                <button
-                  className={styles.submitButton}
-                  type="submit"
-                  disabled={isSubmitting}
-                >
+                <button className={styles.submitButton} type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <span className={styles.buttonSpinner} aria-hidden="true" />
-                      Signing you in
+                      Sending link
                     </>
                   ) : (
-                    'Sign in'
+                    'Send magic link'
                   )}
                 </button>
 
                 <p className={styles.footerNote}>
-                  This login foundation is ready for future API connection,
-                  role-based access, and multi-factor authentication.
-                </p>
-
-                <p className={styles.switchAuth}>
                   Don&apos;t have an account?{' '}
-                  <Link className={styles.switchLink} href="/register">
+                  <Link className={styles.link} href="/register">
                     Register
                   </Link>
                 </p>
