@@ -130,15 +130,21 @@ src/
 ├── app/
 │   ├── layout.tsx              # Root layout with fonts & metadata
 │   ├── page.tsx                # Protected home screen
+│   ├── home.module.css         # Home page styles (CSS Modules)
 │   ├── globals.css             # Tailwind directives
 │   ├── auth/
-│   │   └── callback/page.tsx   # Magic-link callback handler
+│   │   ├── callback/
+│   │   │   ├── page.tsx        # Magic-link callback handler
+│   │   │   └── auth-callback.module.css  # Callback styles
 │   ├── login/page.tsx          # Login route (wrapper)
 │   └── register/page.tsx       # Register route (wrapper)
 ├── components/
 │   ├── LoginPage.tsx           # Login UI component
+│   ├── LoginPage.module.css    # Login styles
 │   ├── RegisterPage.tsx        # Signup UI component
+│   ├── RegisterPage.module.css # Register styles
 │   ├── VerificationPending.tsx # Magic-link confirmation screen
+│   ├── VerificationPending.module.css
 │   └── FamilyTree.tsx          # Family tree visualization
 ├── lib/
 │   ├── supabaseClient.ts       # Lazy Supabase client
@@ -148,6 +154,25 @@ src/
 └── data/
     └── familyMock.ts           # Mock data for development
 ```
+
+### Styling with CSS Modules
+All component and page styles use **CSS Modules** to avoid inline styles and ensure scoped styling:
+
+```tsx
+// ✅ Import and use CSS Module classes
+import styles from './component.module.css'
+
+export default function MyComponent() {
+  return <div className={styles.container}>{/* content */}</div>
+}
+```
+
+**CSS Module files**:
+- Each component has a `.module.css` file (e.g., `LoginPage.tsx` + `LoginPage.module.css`)
+- Page-level styles in `page.module.css` (e.g., `home.module.css` for home page)
+- Use kebab-case class names in CSS, reference via camelCase in TypeScript
+- ESLint enforces no inline `style` props — move to CSS Modules instead
+- Always include `-webkit-` prefixes for Safari compatibility (e.g., `-webkit-backdrop-filter`)
 
 ### Component Pattern (React 19)
 ```tsx
@@ -202,7 +227,27 @@ export default function ProtectedPage() {
 ## Git Workflow
 
 - **Main branch** → Production
-- CTesting the Authentication Flow
+- **Auth branch** → Feature branch with passwordless authentication (ready to merge)
+- Commit before running `git push`
+- Use conventional commits: `fix:`, `feat:`, `docs:`, `refactor:`, etc.
+
+## Configuration Files
+
+### `.cspellrc.json`
+Spell checker configuration that whitelists project-specific terms:
+- Supabase and related APIs (supabase, Supabase, exchangeCodeForSession, etc.)
+- Custom function names and identifiers
+- Add new terms here when encountering cSpell unknowns instead of ignoring them globally
+
+### `.env.local` (Not Checked In)
+Contains Supabase credentials for local development. Create this file locally:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+## Testing the Authentication Flow
 
 ### Local Testing Checklist
 1. **Setup**: `npm install` → `.env.local` with Supabase credentials
@@ -218,25 +263,25 @@ export default function ProtectedPage() {
 - **Stuck on verification page**: Check browser console for callback errors
 - **"Session not created" after link click**: Verify redirect URL matches `NEXT_PUBLIC_SITE_URL`
 - **Email not received**: Check Supabase email provider settings (Dashboard → Authentication → Email)
+- **cSpell warnings persist**: Reload VS Code after updating `.cspellrc.json`
 
 ## Next Steps for Agent
 
 **When adding features**:
-- For **UI components**: Create in `src/components/`, export in stories if Storybook added
+- For **UI components**: Create in `src/components/`, with corresponding `.module.css` file
 - For **pages/routes**: Add under `src/app/`, use route groups `(feature-name)` for organization
 - For **authentication checks**: Use the protected page pattern (see Components section)
 - For **database access**: Use lazy `getSupabaseClient()` to query from Server Components or API routes
+- For **styling**: Always use CSS Modules, never inline `style` props
 - **Always test**: `npm run lint` → `npm run build` → manual testing before committing
 
 **Planned features** (not yet implemented):
-- ✅ Passwordless authentication (complete)
-- ⚠️ Family tree visualization (React Flow wired, needs implementation)
+- ✅ Passwordless authentication with magic-links (complete)
+- ⚠️ Family tree visualization (React Flow framework ready)
 - ⚠️ Multi-user collaboration & permissions
 - ⚠️ Mobile-responsive family tree interactions
+- ⚠️ Profile management and settings
 
 ---
 
-**Last Updated**: May 6, 2026 | **Next.js Version**: 16.2.4 | **React**: 19.2.4 | **Supabase Auth**: Passwordless Magic-Link
----
-
-**Last Updated**: April 30, 2026 | **Next.js Version**: 16.2.4 | **React**: 19.2.4
+**Last Updated**: May 6, 2026 | **Next.js Version**: 16.2.4 | **React**: 19.2.4 | **Supabase**: Passwordless Magic-Link Auth | **Status**: Auth branch ready for review & merge
