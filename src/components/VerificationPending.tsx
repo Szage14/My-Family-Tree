@@ -11,9 +11,15 @@ const lexend = Lexend({
 
 interface VerificationPendingProps {
   email: string
+  title?: string
+  description?: string
 }
 
-export default function VerificationPending({ email }: VerificationPendingProps) {
+export default function VerificationPending({
+  email,
+  title = 'Check your email.',
+  description = 'We have sent you a magic link to complete this step.',
+}: VerificationPendingProps) {
   return (
     <main className={`${styles.shell} ${lexend.className}`}>
       <div className={styles.gridOverlay} aria-hidden="true" />
@@ -44,13 +50,13 @@ export default function VerificationPending({ email }: VerificationPendingProps)
           </div>
 
           <div className={styles.content}>
-            <h1 className={styles.title}>Check your email.</h1>
+            <h1 className={styles.title}>{title}</h1>
             <p className={styles.subtitle}>
-              We&apos;ve sent a verification link to <strong>{email}</strong>
+              {description} <strong>{email}</strong>
             </p>
 
             <div className={styles.instructions}>
-              <p>To complete your registration:</p>
+              <p>To continue:</p>
               <ol className={styles.stepList}>
                 <li>
                   <span className={styles.stepNumber}>1</span>
@@ -62,7 +68,7 @@ export default function VerificationPending({ email }: VerificationPendingProps)
                 </li>
                 <li>
                   <span className={styles.stepNumber}>3</span>
-                  <span>Click the verification link to activate your account</span>
+                  <span>Click the magic link to complete sign in</span>
                 </li>
               </ol>
             </div>
@@ -71,8 +77,8 @@ export default function VerificationPending({ email }: VerificationPendingProps)
               <p className={styles.tipLabel}>Tip:</p>
               <ul className={styles.tipList}>
                 <li>Check your spam or promotions folder if you don&apos;t see it</li>
-                <li>The link will expire in 24 hours</li>
-                <li>You&apos;ll be able to log in immediately after verification</li>
+                <li>The link will expire in 1 hour</li>
+                <li>You&apos;ll be signed in immediately after clicking it</li>
               </ul>
             </div>
 

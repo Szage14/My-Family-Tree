@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { Lexend } from 'next/font/google'
 import styles from './RegisterPage.module.css'
 import VerificationPending from './VerificationPending'
+import { getSupabaseClient } from '@/lib/supabaseClient'
+import { savePendingProfile } from '@/lib/pendingProfile'
 
 const lexend = Lexend({
   subsets: ['latin'],
@@ -14,18 +16,12 @@ const lexend = Lexend({
 type FormErrors = {
   fullName?: string
   email?: string
-  password?: string
-  confirmPassword?: string
+  form?: string
 }
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-function validate(values: {
-  fullName: string
-  email: string
-  password: string
-  confirmPassword: string
-}): FormErrors {
+function validate(values: { fullName: string; email: string }): FormErrors {
   const nextErrors: FormErrors = {}
 
   if (!values.fullName.trim()) {
@@ -40,67 +36,31 @@ function validate(values: {
     nextErrors.email = 'Enter a valid email address.'
   }
 
-  if (!values.password) {
-    nextErrors.password = 'Create a password.'
-  } else if (values.password.length < 8) {
-    nextErrors.password = 'Use at least 8 characters.'
-  }
-
-  if (!values.confirmPassword) {
-    nextErrors.confirmPassword = 'Confirm your password.'
-  } else if (values.confirmPassword !== values.password) {
-    nextErrors.confirmPassword = 'Passwords do not match.'
-  }
-
   return nextErrors
 }
 
 export default function RegisterPage() {
   const fullNameId = useId()
   const emailId = useId()
-  const passwordId = useId()
-  const confirmPasswordId = useId()
 
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [verificationSent, setVerificationSent] = useState(false)
   const [submittedEmail, setSubmittedEmail] = useState('')
-  const [touched, setTouched] = useState({
-    fullName: false,
-    email: false,
-    password: false,
-    confirmPassword: false,
-  })
+  const [touched, setTouched] = useState({ fullName: false, email: false })
   const [errors, setErrors] = useState<FormErrors>({})
 
   const visibleErrors = {
     fullName: touched.fullName ? errors.fullName : undefined,
     email: touched.email ? errors.email : undefined,
-    password: touched.password ? errors.password : undefined,
-    confirmPassword: touched.confirmPassword ? errors.confirmPassword : undefined,
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault()
 
-    const nextErrors = validate({
-      fullName,
-      email,
-      password,
-      confirmPassword,
-    })
-
-    setTouched({
-      fullName: true,
-      email: true,
-      password: true,
-      confirmPassword: true,
-    })
+    const nextErrors = validate({ fullName, email })
+    setTouched({ fullName: true, email: true })
     setErrors(nextErrors)
 
     if (Object.keys(nextErrors).length > 0) {
@@ -110,21 +70,43 @@ export default function RegisterPage() {
     setIsSubmitting(true)
     setErrors({})
 
-    // Simulate API call to Supabase for account creation
-    // Supabase will automatically send a Magic Link verification email
-    await new Promise((resolve) => {
-      window.setTimeout(resolve, 1200)
-    })
+    try {
+      savePendingProfile(fullName.trim(), email.trim())
+      const supabase = getSupabaseClient()
 
-    // On success, show verification confirmation screen
-    setSubmittedEmail(email)
-    setVerificationSent(true)
-    setIsSubmitting(false)
+      const redirectTo = `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+      const { error } = await supabase.auth.signInWithOtp({
+        email: email.trim(),
+        options: {
+          emailRedirectTo: redirectTo,
+        },
+      })
+
+      if (error) {
+        setSubmittedEmail('')
+        setVerificationSent(false)
+        setErrors({ form: error.message })
+        setIsSubmitting(false)
+        return
+      }
+
+      setSubmittedEmail(email.trim())
+      setVerificationSent(true)
+    } catch {
+      setErrors({ form: 'Unable to send verification email. Try again.' })
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
-  // Show verification confirmation screen after successful submission
   if (verificationSent) {
-    return <VerificationPending email={submittedEmail} />
+    return (
+      <VerificationPending
+        email={submittedEmail}
+        title="Check your email to finish creating your account."
+        description="Supabase sent a magic link to verify your email and activate your account."
+      />
+    )
   }
 
   return (
@@ -149,22 +131,22 @@ export default function RegisterPage() {
             <div className={styles.heroCopy}>
               <h1 className={styles.title}>Build your account.</h1>
               <p className={styles.description}>
-                Create a secure profile backed by Supabase. After registration,
-                you&apos;ll receive a verification link via email to complete your signup.
+                Enter your name and email. We&apos;ll send a magic link so you can finish
+                sign-up without creating a password.
               </p>
 
               <ul className={styles.featureList} aria-label="Registration benefits">
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Secure account creation with email verification.
+                  No password to remember.
                 </li>
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Magic Link verification for seamless account activation.
+                  Email verification handled by Supabase.
                 </li>
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Production-grade authentication powered by Supabase.
+                  Your display name is saved after the link is clicked.
                 </li>
               </ul>
             </div>
@@ -172,11 +154,11 @@ export default function RegisterPage() {
             <div className={styles.trustRow} aria-label="Security highlights">
               <span className={styles.trustPill}>
                 <span className={styles.trustDot} aria-hidden="true" />
-                Strong password&ndash;ready structure
+                Magic-link signup
               </span>
               <span className={styles.trustPill}>
                 <span className={styles.trustDot} aria-hidden="true" />
-                Responsive across all screens
+                Supabase-managed auth
               </span>
             </div>
           </div>
@@ -225,12 +207,7 @@ export default function RegisterPage() {
                         if (touched.fullName) {
                           setErrors((current) => ({
                             ...current,
-                            ...validate({
-                              fullName: event.target.value,
-                              email,
-                              password,
-                              confirmPassword,
-                            }),
+                            ...validate({ fullName: event.target.value, email }),
                           }))
                         }
                       }}
@@ -238,12 +215,7 @@ export default function RegisterPage() {
                         setTouched((current) => ({ ...current, fullName: true }))
                         setErrors((current) => ({
                           ...current,
-                          ...validate({
-                            fullName,
-                            email,
-                            password,
-                            confirmPassword,
-                          }),
+                          ...validate({ fullName, email }),
                         }))
                       }}
                       aria-describedby={visibleErrors.fullName ? `${fullNameId}-error` : undefined}
@@ -292,12 +264,7 @@ export default function RegisterPage() {
                         if (touched.email) {
                           setErrors((current) => ({
                             ...current,
-                            ...validate({
-                              fullName,
-                              email: event.target.value,
-                              password,
-                              confirmPassword,
-                            }),
+                            ...validate({ fullName, email: event.target.value }),
                           }))
                         }
                       }}
@@ -305,12 +272,7 @@ export default function RegisterPage() {
                         setTouched((current) => ({ ...current, email: true }))
                         setErrors((current) => ({
                           ...current,
-                          ...validate({
-                            fullName,
-                            email,
-                            password,
-                            confirmPassword,
-                          }),
+                          ...validate({ fullName, email }),
                         }))
                       }}
                       aria-describedby={visibleErrors.email ? `${emailId}-error` : undefined}
@@ -323,176 +285,20 @@ export default function RegisterPage() {
                   ) : null}
                 </div>
 
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel} htmlFor={passwordId}>
-                    Password
-                  </label>
-                  <div className={styles.inputShell}>
-                    <span className={styles.fieldIcon} aria-hidden="true">
-                      <svg className={styles.iconSvg} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path
-                          d="M7.5 10.5V8.75a4.5 4.5 0 1 1 9 0v1.75"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                        />
-                        <rect
-                          x="5"
-                          y="10.5"
-                          width="14"
-                          height="9"
-                          rx="2.4"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                        />
-                      </svg>
-                    </span>
-                    <input
-                      id={passwordId}
-                      className={styles.input}
-                      type={showPassword ? 'text' : 'password'}
-                      name="password"
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                      placeholder="Create a password"
-                      value={password}
-                      onChange={(event) => {
-                        setPassword(event.target.value)
-                        if (touched.password) {
-                          setErrors((current) => ({
-                            ...current,
-                            ...validate({
-                              fullName,
-                              email,
-                              password: event.target.value,
-                              confirmPassword,
-                            }),
-                          }))
-                        }
-                      }}
-                      onBlur={() => {
-                        setTouched((current) => ({ ...current, password: true }))
-                        setErrors((current) => ({
-                          ...current,
-                          ...validate({
-                            fullName,
-                            email,
-                            password,
-                            confirmPassword,
-                          }),
-                        }))
-                      }}
-                      aria-describedby={visibleErrors.password ? `${passwordId}-error` : undefined}
-                    />
-                    <button
-                      className={styles.toggleButton}
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => setShowPassword((current) => !current)}
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {visibleErrors.password ? (
-                    <p id={`${passwordId}-error`} className={styles.fieldError} role="alert">
-                      {visibleErrors.password}
-                    </p>
-                  ) : null}
-                </div>
+                {errors.form ? (
+                  <p className={styles.fieldError} role="alert">
+                    {errors.form}
+                  </p>
+                ) : null}
 
-                <div className={styles.fieldGroup}>
-                  <label className={styles.fieldLabel} htmlFor={confirmPasswordId}>
-                    Confirm password
-                  </label>
-                  <div className={styles.inputShell}>
-                    <span className={styles.fieldIcon} aria-hidden="true">
-                      <svg className={styles.iconSvg} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                        <path
-                          d="M7.5 10.5V8.75a4.5 4.5 0 1 1 9 0v1.75"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                          strokeLinecap="round"
-                        />
-                        <rect
-                          x="5"
-                          y="10.5"
-                          width="14"
-                          height="9"
-                          rx="2.4"
-                          stroke="currentColor"
-                          strokeWidth="1.6"
-                        />
-                      </svg>
-                    </span>
-                    <input
-                      id={confirmPasswordId}
-                      className={styles.input}
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      name="confirmPassword"
-                      autoComplete="new-password"
-                      disabled={isSubmitting}
-                      placeholder="Confirm your password"
-                      value={confirmPassword}
-                      onChange={(event) => {
-                        setConfirmPassword(event.target.value)
-                        if (touched.confirmPassword) {
-                          setErrors((current) => ({
-                            ...current,
-                            ...validate({
-                              fullName,
-                              email,
-                              password,
-                              confirmPassword: event.target.value,
-                            }),
-                          }))
-                        }
-                      }}
-                      onBlur={() => {
-                        setTouched((current) => ({ ...current, confirmPassword: true }))
-                        setErrors((current) => ({
-                          ...current,
-                          ...validate({
-                            fullName,
-                            email,
-                            password,
-                            confirmPassword,
-                          }),
-                        }))
-                      }}
-                      aria-describedby={
-                        visibleErrors.confirmPassword ? `${confirmPasswordId}-error` : undefined
-                      }
-                    />
-                    <button
-                      className={styles.toggleButton}
-                      type="button"
-                      disabled={isSubmitting}
-                      onClick={() => setShowConfirmPassword((current) => !current)}
-                      aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
-                    >
-                      {showConfirmPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {visibleErrors.confirmPassword ? (
-                    <p id={`${confirmPasswordId}-error`} className={styles.fieldError} role="alert">
-                      {visibleErrors.confirmPassword}
-                    </p>
-                  ) : null}
-                </div>
-
-                <button
-                  className={styles.submitButton}
-                  type="submit"
-                  disabled={isSubmitting}
-                >
+                <button className={styles.submitButton} type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
                       <span className={styles.buttonSpinner} aria-hidden="true" />
-                      Creating account
+                      Sending link
                     </>
                   ) : (
-                    'Register'
+                    'Send magic link'
                   )}
                 </button>
 

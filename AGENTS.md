@@ -70,49 +70,143 @@ public/                     # Static assets (SVGs)
 
 ### Dependencies Already Installed
 - ✅ Next.js 16, React 19, TypeScript, Tailwind CSS v4, ESLint
+- ✅ `@supabase/supabase-js` (v2.105.3) — Supabase client for auth & database
+- ✅ `reactflow` (v11.11.4) — Family tree visualization framework
 - ✅ `node_modules/` present and ready
 
-### Planned Dependencies (Not Yet Installed)
-- ❌ `react-flow-renderer` — For family tree visualization
-- ❌ `@supabase/supabase-js` — For backend & database
-- ❌ `.env.local` — Environment variables (not checked in)
+### Environment Configuration
+Create `.env.local` with Supabase credentials (not checked in):
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+See [Supabase Authentication](#supabase-authentication-flow) for setup details.
 
-**If adding these**, run:
-```bash
-npm install react-flow-renderer @supabase/supabase-js
+## Supabase Authentication Flow
+
+### Passwordless Magic-Link Authentication
+The project implements **passwordless authentication** using Supabase Magic Links:
+
+1. **Registration** (`src/components/RegisterPage.tsx`):
+   - Collect: full name + email
+   - Call: `supabase.auth.signInWithOtp({ email, options: { emailRedirectTo } })`
+   - Save pending profile to LocalStorage for later attachment
+   - Show verification pending screen
+
+2. **Login** (`src/components/LoginPage.tsx`):
+   - Collect: email only
+   - Call: `supabase.auth.signInWithOtp({ email, options: { shouldCreateUser: false } })`
+   - Show verification pending screen
+
+3. **Callback** (`src/app/auth/callback/page.tsx`):
+   - Exchange code for session: `supabase.auth.exchangeCodeForSession(code)`
+   - Apply pending profile data (full name)
+   - Redirect authenticated user to home
+
+### Database Schema
+**profiles** table (auto-created on signup via trigger):
+```sql
+CREATE TABLE public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id),
+  email TEXT UNIQUE NOT NULL,
+  full_name TEXT,
+  created_at TIMESTAMPTZ,
+  updated_at TIMESTAMPTZ
+);
+-- RLS policies: Users can read/insert/update own profile only
 ```
 
-Then create `.env.local` with Supabase keys.
+### Key Files
+- **lib/supabaseClient.ts** — Lazy Supabase client initialization (prevents build-time env requirement)
+- **lib/pendingProfile.ts** — LocalStorage helpers for signup name during callback flow
+- **app/auth/callback/** — PKCE flow completion and session establishment
 
 ## Common Patterns & Best Practices
 
-### File Structure Example
+### File Structure
 ```
 src/
 ├── app/
-│   ├── layout.tsx           # Root layout
-│   ├── page.tsx             # Home page
-│   ├── (auth)/              # Route groups for features
-│   └── api/                 # API routes (if needed)
-├── components/              # Reusable components
-├── utils/                   # Utility functions
-├── hooks/                   # Custom React hooks
-└── types/                   # TypeScript type definitions
+│   ├── layout.tsx              # Root layout with fonts & metadata
+│   ├── page.tsx                # Protected home screen
+│   ├── home.module.css         # Home page styles (CSS Modules)
+│   ├── globals.css             # Tailwind directives
+│   ├── auth/
+│   │   ├── callback/
+│   │   │   ├── page.tsx        # Magic-link callback handler
+│   │   │   └── auth-callback.module.css  # Callback styles
+│   ├── login/page.tsx          # Login route (wrapper)
+│   └── register/page.tsx       # Register route (wrapper)
+├── components/
+│   ├── LoginPage.tsx           # Login UI component
+│   ├── LoginPage.module.css    # Login styles
+│   ├── RegisterPage.tsx        # Signup UI component
+│   ├── RegisterPage.module.css # Register styles
+│   ├── VerificationPending.tsx # Magic-link confirmation screen
+│   ├── VerificationPending.module.css
+│   └── FamilyTree.tsx          # Family tree visualization
+├── lib/
+│   ├── supabaseClient.ts       # Lazy Supabase client
+│   └── pendingProfile.ts       # LocalStorage for signup flow
+├── types/
+│   └── family.ts               # TypeScript interfaces
+└── data/
+    └── familyMock.ts           # Mock data for development
 ```
+
+### Styling with CSS Modules
+All component and page styles use **CSS Modules** to avoid inline styles and ensure scoped styling:
+
+```tsx
+// ✅ Import and use CSS Module classes
+import styles from './component.module.css'
+
+export default function MyComponent() {
+  return <div className={styles.container}>{/* content */}</div>
+}
+```
+
+**CSS Module files**:
+- Each component has a `.module.css` file (e.g., `LoginPage.tsx` + `LoginPage.module.css`)
+- Page-level styles in `page.module.css` (e.g., `home.module.css` for home page)
+- Use kebab-case class names in CSS, reference via camelCase in TypeScript
+- ESLint enforces no inline `style` props — move to CSS Modules instead
+- Always include `-webkit-` prefixes for Safari compatibility (e.g., `-webkit-backdrop-filter`)
 
 ### Component Pattern (React 19)
 ```tsx
-// ✅ Use async components (Server Components by default)
-export default async function Page() {
+// ✅ Server Components by default (most components)
+export default function Page() {
   return <div>Server component</div>
 }
 
-// ⚠️ Use 'use client' sparingly for interactive UI only
+// ⚠️ Client Components only when needed (interactive forms, hooks)
 'use client'
 import { useState } from 'react'
-export default function InteractiveComponent() {
+
+export default function InteractiveForm() {
   const [state, setState] = useState(null)
   return <div>{state}</div>
+}
+
+// ✅ Protected page pattern
+'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { getSupabaseClient } from '@/lib/supabaseClient'
+
+export default function ProtectedPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    const supabase = getSupabaseClient()
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!user) router.replace('/login')
+    })
+  }, [router])
+
+  return <div>Protected content</div>
 }
 ```
 
@@ -120,9 +214,12 @@ export default function InteractiveComponent() {
 
 | Issue | Solution |
 |-------|----------|
+| **Supabase client undefined at build time** | Use lazy getter (`getSupabaseClient()`) — prevents env requirement during `npm run build` |
+| **Auth callback fails after magic-link click** | Ensure `NEXT_PUBLIC_SITE_URL` matches redirect domain; check `.env.local` |
 | **Type errors with React 19** | Ensure `@types/react@^19` is installed |
 | **Tailwind classes not applying** | Check `.next/static/css/` after build; v4 uses CSS variables |
-| **Build fails silently** | Run `npm run lint` first — ESLint might catch issues |
+| **cSpell unknown words** | Add custom terms to `.cspellrc.json` (e.g., "supabase", "Supabase") |
+| **Build fails silently** | Run `npm run lint` first — ESLint catches issues early |
 | **React Compiler issues** | If unexpected behavior, add `'use no memo'` to component |
 | **Environment variables not loading** | Create `.env.local` (not `.env`) and restart dev server |
 | **Module not found errors** | Check `tsconfig.json` for path aliases; restart TypeScript server |
@@ -130,20 +227,61 @@ export default function InteractiveComponent() {
 ## Git Workflow
 
 - **Main branch** → Production
+- **Auth branch** → Feature branch with passwordless authentication (ready to merge)
 - Commit before running `git push`
-- Resolve merge conflicts manually (check README.md if conflicts occur)
+- Use conventional commits: `fix:`, `feat:`, `docs:`, `refactor:`, etc.
+
+## Configuration Files
+
+### `.cspellrc.json`
+Spell checker configuration that whitelists project-specific terms:
+- Supabase and related APIs (supabase, Supabase, exchangeCodeForSession, etc.)
+- Custom function names and identifiers
+- Add new terms here when encountering cSpell unknowns instead of ignoring them globally
+
+### `.env.local` (Not Checked In)
+Contains Supabase credentials for local development. Create this file locally:
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=YOUR_ANON_KEY
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+```
+
+## Testing the Authentication Flow
+
+### Local Testing Checklist
+1. **Setup**: `npm install` → `.env.local` with Supabase credentials
+2. **Dev server**: `npm run dev` → navigate to http://localhost:3000
+3. **Flow**: 
+   - Register with name + email → receive magic link in email
+   - Click link → callback completes session → redirected to home
+   - Home page shows authenticated user info
+   - Sign out → redirected to login
+4. **Build**: `npm run build` → verify all routes static (prerendered)
+
+### Troubleshooting Auth
+- **Stuck on verification page**: Check browser console for callback errors
+- **"Session not created" after link click**: Verify redirect URL matches `NEXT_PUBLIC_SITE_URL`
+- **Email not received**: Check Supabase email provider settings (Dashboard → Authentication → Email)
+- **cSpell warnings persist**: Reload VS Code after updating `.cspellrc.json`
 
 ## Next Steps for Agent
 
-1. **Run the dev server**: `npm run dev` and verify http://localhost:3000 loads
-2. **Review the layout**: Check `src/app/layout.tsx` for current setup
-3. **Explore type definitions**: Open `tsconfig.json` for path aliases and compiler options
-4. **When adding features**: 
-   - Create components in `src/components/` if not Server Components
-   - Use `src/app/` for pages and API routes
-   - Follow TypeScript strict mode (no implicit any)
-   - Test with `npm run lint` before committing
+**When adding features**:
+- For **UI components**: Create in `src/components/`, with corresponding `.module.css` file
+- For **pages/routes**: Add under `src/app/`, use route groups `(feature-name)` for organization
+- For **authentication checks**: Use the protected page pattern (see Components section)
+- For **database access**: Use lazy `getSupabaseClient()` to query from Server Components or API routes
+- For **styling**: Always use CSS Modules, never inline `style` props
+- **Always test**: `npm run lint` → `npm run build` → manual testing before committing
+
+**Planned features** (not yet implemented):
+- ✅ Passwordless authentication with magic-links (complete)
+- ⚠️ Family tree visualization (React Flow framework ready)
+- ⚠️ Multi-user collaboration & permissions
+- ⚠️ Mobile-responsive family tree interactions
+- ⚠️ Profile management and settings
 
 ---
 
-**Last Updated**: April 30, 2026 | **Next.js Version**: 16.2.4 | **React**: 19.2.4
+**Last Updated**: May 6, 2026 | **Next.js Version**: 16.2.4 | **React**: 19.2.4 | **Supabase**: Passwordless Magic-Link Auth | **Status**: Auth branch ready for review & merge
