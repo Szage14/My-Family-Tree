@@ -109,15 +109,15 @@ export default function LoginPage() {
               <ul className={styles.featureList} aria-label="Login benefits">
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Protected login flow with accessible controls.
+                  Secure sign-in backed by Supabase authentication.
                 </li>
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Ready to expand into register, OTP, and recovery screens.
+                  Magic Link email verification and passwordless options.
                 </li>
                 <li className={styles.featureItem}>
                   <span className={styles.featureBullet} aria-hidden="true" />
-                  Built for clean handoff to future backend integration.
+                  Built for production-grade authentication and security.
                 </li>
               </ul>
             </div>
@@ -317,6 +317,13 @@ export default function LoginPage() {
                 <p className={styles.footerNote}>
                   This login foundation is ready for future API connection,
                   role-based access, and multi-factor authentication.
+                </p>
+
+                <p className={styles.switchAuth}>
+                  Don&apos;t have an account?{' '}
+                  <Link className={styles.switchLink} href="/register">
+                    Register
+                  </Link>
                 </p>
               </form>
             </div>

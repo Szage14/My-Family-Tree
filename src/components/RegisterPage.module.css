@@ -433,25 +433,6 @@
   text-align: center;
 }
 
-.switchAuth {
-  margin: -0.35rem 0 0;
-  color: rgba(226, 243, 255, 0.82);
-  font-size: 0.92rem;
-  line-height: 1.6;
-  text-align: center;
-}
-
-.switchLink {
-  color: #67e8f9;
-  font-weight: 700;
-  text-decoration: none;
-  transition: color 180ms ease;
-}
-
-.switchLink:hover {
-  color: #d1fbff;
-}
-
 @keyframes spin {
   to {
     transform: rotate(360deg);
