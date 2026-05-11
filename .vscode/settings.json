@@ -1,0 +1,32 @@
+{
+  "modelContext.servers": {
+    "github": {
+      "command": "node",
+      "args": [
+        "C:\\nvm4w\\nodejs\\lib\\node_modules\\@modelcontextprotocol\\server-github\\dist\\index.js"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "your_github_token_here"
+      },
+      "disabled": false
+    },
+    "postgres": {
+      "command": "node",
+      "args": [
+        "C:\\nvm4w\\nodejs\\lib\\node_modules\\@modelcontextprotocol\\server-postgres\\dist\\index.js"
+      ],
+      "env": {
+        "DATABASE_URL": "postgresql://user:password@localhost:5432/database"
+      },
+      "disabled": false
+    },
+    "context7": {
+      "command": "C:\\nvm4w\\nodejs\\context7.cmd",
+      "args": [],
+      "env": {
+        "CONTEXT7_API_KEY": "your_api_key_here"
+      },
+      "disabled": false
+    }
+  }
+}
