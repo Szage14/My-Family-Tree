@@ -12,6 +12,11 @@ export type DashboardMember = {
   children?: DashboardMember[]
 }
 
+// Helper: Generate consistent mock avatar URLs using DiceBear API
+function getAvatarUrl(name: string): string {
+  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${encodeURIComponent(name)}`
+}
+
 export const dashboardFamilyRoot: DashboardMember = {
   id: 'mateo-rivera',
   name: 'Mateo Rivera',
@@ -20,7 +25,7 @@ export const dashboardFamilyRoot: DashboardMember = {
   address: '4521 Heritage Lane, San Aurelio, CA 94105',
   gender: 'male',
   avatarColor: 'from-blue-600 to-blue-400',
-  avatarUrl: '/avatars/mateo-rivera.jpg',
+  avatarUrl: getAvatarUrl('Mateo Rivera'),
   spouse: {
     id: 'elena-rivera',
     name: 'Elena Rivera',
@@ -29,7 +34,7 @@ export const dashboardFamilyRoot: DashboardMember = {
     address: '4521 Heritage Lane, San Aurelio, CA 94105',
     gender: 'female',
     avatarColor: 'from-rose-600 to-pink-400',
-    avatarUrl: '/avatars/elena-rivera.jpg',
+    avatarUrl: getAvatarUrl('Elena Rivera'),
   },
   children: [
     {
@@ -40,7 +45,7 @@ export const dashboardFamilyRoot: DashboardMember = {
       address: '1247 Oceanview Parkway, Port Azure, MA 02134',
       gender: 'female',
       avatarColor: 'from-purple-600 to-purple-400',
-      avatarUrl: '/avatars/isabella-rivera.jpg',
+      avatarUrl: getAvatarUrl('Isabella Rivera-Cruz'),
       spouse: {
         id: 'daniel-cruz',
         name: 'Daniel Cruz',
@@ -49,7 +54,7 @@ export const dashboardFamilyRoot: DashboardMember = {
         address: '1247 Oceanview Parkway, Port Azure, MA 02134',
         gender: 'male',
         avatarColor: 'from-amber-600 to-amber-400',
-        avatarUrl: '/avatars/daniel-cruz.jpg',
+        avatarUrl: getAvatarUrl('Daniel Cruz'),
       },
       children: [
         {
@@ -60,7 +65,7 @@ export const dashboardFamilyRoot: DashboardMember = {
           address: '892 Beacon Street, Port Azure, MA 02134',
           gender: 'female',
           avatarColor: 'from-emerald-600 to-emerald-400',
-          avatarUrl: '/avatars/sofia-cruz.jpg',
+          avatarUrl: getAvatarUrl('Sofia Cruz'),
           spouse: {
             id: 'leo-watson',
             name: 'Leo Watson',
@@ -69,7 +74,7 @@ export const dashboardFamilyRoot: DashboardMember = {
             address: '892 Beacon Street, Port Azure, MA 02134',
             gender: 'male',
             avatarColor: 'from-cyan-600 to-blue-400',
-            avatarUrl: '/avatars/leo-watson.jpg',
+            avatarUrl: getAvatarUrl('Leo Watson'),
           },
           children: [
             {
@@ -80,7 +85,7 @@ export const dashboardFamilyRoot: DashboardMember = {
               address: '892 Beacon Street, Port Azure, MA 02134',
               gender: 'male',
               avatarColor: 'from-yellow-500 to-yellow-300',
-              avatarUrl: '/avatars/milo-watson.jpg',
+              avatarUrl: getAvatarUrl('Milo Watson'),
             },
           ],
         },
@@ -92,7 +97,7 @@ export const dashboardFamilyRoot: DashboardMember = {
           address: '3156 Maple Drive, North Haven, CT 06473',
           gender: 'male',
           avatarColor: 'from-indigo-600 to-indigo-400',
-          avatarUrl: '/avatars/tomas-cruz.jpg',
+          avatarUrl: getAvatarUrl('Tomas Cruz'),
           spouse: {
             id: 'elena-santos',
             name: 'Elena Santos',
@@ -101,7 +106,7 @@ export const dashboardFamilyRoot: DashboardMember = {
             address: '3156 Maple Drive, North Haven, CT 06473',
             gender: 'female',
             avatarColor: 'from-green-600 to-emerald-400',
-            avatarUrl: '/avatars/elena-santos.jpg',
+            avatarUrl: getAvatarUrl('Elena Santos'),
           },
         },
       ],
@@ -114,7 +119,7 @@ export const dashboardFamilyRoot: DashboardMember = {
       address: '5678 Medical Plaza Avenue, Lakeside City, IL 60601',
       gender: 'male',
       avatarColor: 'from-teal-600 to-teal-400',
-      avatarUrl: '/avatars/adrian-rivera.jpg',
+      avatarUrl: getAvatarUrl('Adrian Rivera'),
       spouse: {
         id: 'nora-rivera',
         name: 'Nora Rivera',
@@ -123,7 +128,7 @@ export const dashboardFamilyRoot: DashboardMember = {
         address: '5678 Medical Plaza Avenue, Lakeside City, IL 60601',
         gender: 'female',
         avatarColor: 'from-pink-600 to-rose-400',
-        avatarUrl: '/avatars/nora-rivera.jpg',
+        avatarUrl: getAvatarUrl('Nora Rivera'),
       },
       children: [
         {
@@ -134,7 +139,7 @@ export const dashboardFamilyRoot: DashboardMember = {
           address: '7890 Research Boulevard, Lakeside City, IL 60601',
           gender: 'female',
           avatarColor: 'from-violet-600 to-purple-400',
-          avatarUrl: '/avatars/lucia-rivera.jpg',
+          avatarUrl: getAvatarUrl('Lucia Rivera'),
         },
         {
           id: 'enzo-rivera',
@@ -144,7 +149,7 @@ export const dashboardFamilyRoot: DashboardMember = {
           address: '234 Tech Park, Lakeside City, IL 60601',
           gender: 'male',
           avatarColor: 'from-orange-600 to-orange-400',
-          avatarUrl: '/avatars/enzo-rivera.jpg',
+          avatarUrl: getAvatarUrl('Enzo Rivera'),
           spouse: {
             id: 'hana-kim',
             name: 'Hana Kim',
@@ -153,7 +158,7 @@ export const dashboardFamilyRoot: DashboardMember = {
             address: '234 Tech Park, Lakeside City, IL 60601',
             gender: 'female',
             avatarColor: 'from-red-600 to-pink-400',
-            avatarUrl: '/avatars/hana-kim.jpg',
+            avatarUrl: getAvatarUrl('Hana Kim'),
           },
           children: [
             {
@@ -164,7 +169,7 @@ export const dashboardFamilyRoot: DashboardMember = {
               address: '234 Tech Park, Lakeside City, IL 60601',
               gender: 'female',
               avatarColor: 'from-fuchsia-500 to-purple-400',
-              avatarUrl: '/avatars/iris-rivera.jpg',
+              avatarUrl: getAvatarUrl('Iris Rivera'),
             },
           ],
         },
@@ -178,7 +183,7 @@ export const dashboardFamilyRoot: DashboardMember = {
       address: '789 Museum Quarter, Golden Bay, FL 33139',
       gender: 'female',
       avatarColor: 'from-lime-600 to-green-400',
-      avatarUrl: '/avatars/camila-rivera.jpg',
+      avatarUrl: getAvatarUrl('Camila Rivera-Ibarra'),
       spouse: {
         id: 'marco-ibarra',
         name: 'Marco Ibarra',
@@ -187,7 +192,7 @@ export const dashboardFamilyRoot: DashboardMember = {
         address: '789 Museum Quarter, Golden Bay, FL 33139',
         gender: 'male',
         avatarColor: 'from-sky-600 to-cyan-400',
-        avatarUrl: '/avatars/marco-ibarra.jpg',
+        avatarUrl: getAvatarUrl('Marco Ibarra'),
       },
       children: [
         {
@@ -198,7 +203,7 @@ export const dashboardFamilyRoot: DashboardMember = {
           address: '456 Artists Lane, Golden Bay, FL 33139',
           gender: 'female',
           avatarColor: 'from-slate-600 to-gray-400',
-          avatarUrl: '/avatars/renata-ibarra.jpg',
+          avatarUrl: getAvatarUrl('Renata Ibarra'),
         },
       ],
     },
