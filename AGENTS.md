@@ -1,5 +1,9 @@
 # Family Tree App — Agent Customization
 
+> **Quick Start for Agents**: For local dev → `npm install` → `.env.local` setup → `npm run dev`. 
+> For new feature patterns, see [Component Pattern (React 19)](#component-pattern-react-19) and [File Structure](#file-structure).
+> Always run `npm run lint` + `npm run build` before committing.
+
 ## ⚠️ Critical: Next.js 16 — Breaking Changes
 
 This project uses **Next.js 16.2.4**, which has significant breaking changes from older versions:
@@ -129,7 +133,7 @@ CREATE TABLE public.profiles (
 src/
 ├── app/
 │   ├── layout.tsx              # Root layout with fonts & metadata
-│   ├── page.tsx                # Protected home screen
+│   ├── page.tsx                # Protected home screen with DashboardTree
 │   ├── home.module.css         # Home page styles (CSS Modules)
 │   ├── globals.css             # Tailwind directives
 │   ├── auth/
@@ -145,14 +149,18 @@ src/
 │   ├── RegisterPage.module.css # Register styles
 │   ├── VerificationPending.tsx # Magic-link confirmation screen
 │   ├── VerificationPending.module.css
-│   └── FamilyTree.tsx          # Family tree visualization
+│   ├── DashboardTree.tsx       # Hierarchical family tree with search & collapse
+│   ├── DashboardTree.module.css # Dashboard tree styles
+│   ├── FamilyTree.tsx          # React Flow visualization (planned)
+│   └── FamilyTree.module.css
 ├── lib/
 │   ├── supabaseClient.ts       # Lazy Supabase client
 │   └── pendingProfile.ts       # LocalStorage for signup flow
 ├── types/
-│   └── family.ts               # TypeScript interfaces
+│   └── family.ts               # TypeScript interfaces (FamilyMember, Gender)
 └── data/
-    └── familyMock.ts           # Mock data for development
+    ├── familyMock.ts           # Mock data for development (React Flow)
+    └── dashboardFamilyMock.ts  # Mock data for dashboard tree
 ```
 
 ### Styling with CSS Modules
@@ -210,6 +218,67 @@ export default function ProtectedPage() {
 }
 ```
 
+### Dashboard Tree Pattern (React 19)
+The DashboardTree component demonstrates a performant, searchable hierarchical tree using React 19:
+
+```tsx
+// ✅ DashboardTree Component Pattern
+'use client'
+import { useMemo, useState } from 'react'
+import type { DashboardMember } from '@/data/dashboardFamilyMock'
+import { dashboardFamilyRoot } from '@/data/dashboardFamilyMock'
+import styles from './DashboardTree.module.css'
+
+type DashboardTreeProps = {
+  searchQuery: string
+}
+
+export default function DashboardTree({ searchQuery }: DashboardTreeProps) {
+  const [collapsedIds, setCollapsedIds] = useState<Set<string>>(new Set())
+
+  // ✅ useMemo prevents re-renders of tree on every keystroke
+  const visibleMembers = useMemo(() => {
+    return filterAndRenderTree(dashboardFamilyRoot, searchQuery, collapsedIds)
+  }, [searchQuery, collapsedIds])
+
+  const handleToggle = (memberId: string) => {
+    setCollapsedIds((prev) => {
+      const next = new Set(prev)
+      next.has(memberId) ? next.delete(memberId) : next.add(memberId)
+      return next
+    })
+  }
+
+  return (
+    <div className={styles.container}>
+      {visibleMembers}
+    </div>
+  )
+}
+```
+
+**Key Patterns**:
+- **Search filtering**: Recursive function checks member name + metadata for match
+- **Branch visibility**: If a descendant matches search, entire ancestor chain renders
+- **Collapse state**: Track collapsed node IDs in state; filter before rendering
+- **useMemo optimization**: Prevent expensive tree traversals on every render
+- **CSS Modules**: All tree styling scoped to avoid conflicts
+
+**Data Structure** (`src/data/dashboardFamilyMock.ts`):
+```ts
+export type DashboardMember = {
+  id: string
+  name: string
+  relationship: string      // "Family Patriarch", "Daughter", etc.
+  birthYear: number
+  deathYear?: number
+  location: string
+  occupation: string
+  partnerName?: string
+  children?: DashboardMember[]  // Recursive hierarchical structure
+}
+```
+
 ## Gotchas & Debugging Tips
 
 | Issue | Solution |
@@ -226,8 +295,9 @@ export default function ProtectedPage() {
 
 ## Git Workflow
 
-- **Main branch** → Production
-- **Auth branch** → Feature branch with passwordless authentication (ready to merge)
+- **Main branch** → Production (stable)
+- **Dashboard branch** → Active feature branch with searchable hierarchical family tree
+- **Auth branch** → ✅ Complete — ready to merge when dashboard is finalized
 - Commit before running `git push`
 - Use conventional commits: `fix:`, `feat:`, `docs:`, `refactor:`, etc.
 
@@ -284,4 +354,4 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 
 ---
 
-**Last Updated**: May 6, 2026 | **Next.js Version**: 16.2.4 | **React**: 19.2.4 | **Supabase**: Passwordless Magic-Link Auth | **Status**: Auth branch ready for review & merge
+**Last Updated**: May 12, 2026 | **Next.js Version**: 16.2.4 | **React**: 19.2.4 | **Supabase**: Passwordless Magic-Link Auth | **Status**: Dashboard branch active with searchable tree

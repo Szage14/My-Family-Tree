@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Image from 'next/image'
 import type { DashboardMember } from '@/data/dashboardFamilyMock'
 import { dashboardFamilyRoot } from '@/data/dashboardFamilyMock'
 import styles from './DashboardTree.module.css'
@@ -25,17 +26,62 @@ function getInitials(name: string): string {
     .toUpperCase()
 }
 
+
+function getAvatarToneClass(avatarColor?: string): string {
+  const toneMap: Record<string, string> = {
+    'from-blue-600 to-blue-400': styles.avatarBlue,
+    'from-rose-600 to-pink-400': styles.avatarRose,
+    'from-purple-600 to-purple-400': styles.avatarPurple,
+    'from-amber-600 to-amber-400': styles.avatarAmber,
+    'from-emerald-600 to-emerald-400': styles.avatarEmerald,
+    'from-cyan-600 to-blue-400': styles.avatarCyan,
+    'from-yellow-500 to-yellow-300': styles.avatarYellow,
+    'from-indigo-600 to-indigo-400': styles.avatarIndigo,
+    'from-green-600 to-emerald-400': styles.avatarGreen,
+    'from-teal-600 to-teal-400': styles.avatarTeal,
+    'from-pink-600 to-rose-400': styles.avatarPink,
+    'from-violet-600 to-purple-400': styles.avatarViolet,
+    'from-orange-600 to-orange-400': styles.avatarOrange,
+    'from-red-600 to-pink-400': styles.avatarRed,
+    'from-fuchsia-500 to-purple-400': styles.avatarFuchsia,
+    'from-lime-600 to-green-400': styles.avatarLime,
+    'from-sky-600 to-cyan-400': styles.avatarSky,
+    'from-slate-600 to-gray-400': styles.avatarSlate,
+  }
+
+  return toneMap[avatarColor || 'from-blue-600 to-blue-400'] || styles.avatarBlue
+}
+function formatBirthDate(birthDate: string): string {
+  try {
+    const date = new Date(birthDate)
+    const month = date.toLocaleDateString('en-US', { month: 'short' })
+    const day = date.getDate()
+    const year = date.getFullYear()
+    return `${month} ${day}, ${year}`
+  } catch {
+    return birthDate
+  }
+}
+
 function branchMatchesSearch(member: DashboardMember, searchTerm: string): boolean {
   if (!searchTerm) {
     return true
   }
 
-  const memberText = `${member.name} ${member.relationship} ${member.location} ${member.occupation}`
+  const memberText = `${member.name} ${member.relationship} ${member.address}`
     .toLowerCase()
     .trim()
 
   if (memberText.includes(searchTerm)) {
     return true
+  }
+
+  // Check spouse
+  if (member.spouse) {
+    const spouseText = `${member.spouse.name} ${member.spouse.relationship} ${member.spouse.address}`.toLowerCase().trim()
+    if (spouseText.includes(searchTerm)) {
+      return true
+    }
   }
 
   return (member.children ?? []).some((child) => branchMatchesSearch(child, searchTerm))
@@ -63,42 +109,78 @@ function TreeNode({ member, searchTerm, collapsedIds, onToggle }: TreeNodeProps)
 
   return (
     <li className={styles.nodeItem}>
-      <article className={styles.nodeCard}>
-        <div className={styles.cardTopRow}>
-          <div className={styles.avatar}>{getInitials(member.name)}</div>
-          <div className={styles.identityBlock}>
-            <h3 className={styles.memberName}>{member.name}</h3>
-            <p className={styles.memberRole}>{member.relationship}</p>
+      <div className={styles.coupleContainer}>
+        {/* Main member card */}
+        <article className={styles.nodeCard}>
+          <div className={styles.cardTopRow}>
+            {member.avatarUrl ? (
+              <Image src={member.avatarUrl} alt={member.name} width={40} height={40} className={styles.profileImage} />
+            ) : (
+              <div className={`${styles.avatar} ${getAvatarToneClass(member.avatarColor)}`}>
+                {getInitials(member.name)}
+              </div>
+            )}
+            <div className={styles.identityBlock}>
+              <h3 className={styles.memberName}>{member.name}</h3>
+              <p className={styles.memberRole}>{member.relationship}</p>
+            </div>
+            {hasChildren ? (
+              <button
+                type="button"
+                className={styles.toggleButton}
+                onClick={() => onToggle(member.id)}
+                aria-label={isCollapsed ? `Expand descendants of ${member.name}` : `Collapse descendants of ${member.name}`}
+              >
+                {isCollapsed ? '+' : '-'}
+              </button>
+            ) : null}
           </div>
-          {hasChildren ? (
-            <button
-              type="button"
-              className={styles.toggleButton}
-              onClick={() => onToggle(member.id)}
-              aria-label={isCollapsed ? `Expand descendants of ${member.name}` : `Collapse descendants of ${member.name}`}
-            >
-              {isCollapsed ? '+' : '-'}
-            </button>
-          ) : null}
-        </div>
 
-        <dl className={styles.metaGrid}>
-          <div className={styles.metaItem}>
-            <dt>Born</dt>
-            <dd>{member.birthYear}</dd>
-          </div>
-          <div className={styles.metaItem}>
-            <dt>Location</dt>
-            <dd>{member.location}</dd>
-          </div>
-          <div className={styles.metaItemWide}>
-            <dt>Profession</dt>
-            <dd>{member.occupation}</dd>
-          </div>
-        </dl>
+          <dl className={styles.metaGrid}>
+            <div className={styles.metaItem}>
+              <dt>Birthdate</dt>
+              <dd>{formatBirthDate(member.birthDate)}</dd>
+            </div>
+            <div className={styles.metaItemWide}>
+              <dt>Address</dt>
+              <dd>{member.address}</dd>
+            </div>
+          </dl>
+        </article>
 
-        {member.partnerName ? <p className={styles.partnerTag}>Partner: {member.partnerName}</p> : null}
-      </article>
+        {/* Spouse card if present */}
+        {member.spouse ? (
+          <>
+            <div className={styles.spouseConnector} />
+            <article className={styles.nodeCard + ' ' + styles.spouseCard}>
+              <div className={styles.cardTopRow}>
+                {member.spouse.avatarUrl ? (
+                  <Image src={member.spouse.avatarUrl} alt={member.spouse.name} width={40} height={40} className={styles.profileImage} />
+                ) : (
+                  <div className={`${styles.avatar} ${getAvatarToneClass(member.spouse.avatarColor)}`}>
+                    {getInitials(member.spouse.name)}
+                  </div>
+                )}
+                <div className={styles.identityBlock}>
+                  <h3 className={styles.memberName}>{member.spouse.name}</h3>
+                  <p className={styles.memberRole}>{member.spouse.relationship}</p>
+                </div>
+              </div>
+
+              <dl className={styles.metaGrid}>
+                <div className={styles.metaItem}>
+                  <dt>Birthdate</dt>
+                  <dd>{formatBirthDate(member.spouse.birthDate)}</dd>
+                </div>
+                <div className={styles.metaItemWide}>
+                  <dt>Address</dt>
+                  <dd>{member.spouse.address}</dd>
+                </div>
+              </dl>
+            </article>
+          </>
+        ) : null}
+      </div>
 
       {hasChildren && !isCollapsed && shownChildren.length > 0 ? (
         <ul className={styles.childrenList}>
