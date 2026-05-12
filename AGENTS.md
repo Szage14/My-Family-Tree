@@ -47,6 +47,8 @@ This file is for AI coding agents working in this repository.
 - Make minimal, focused edits; avoid broad refactors unless requested.
 - Preserve existing file organization and naming.
 - If adding terms that trigger cSpell warnings, update [.cspellrc.json](.cspellrc.json) instead of suppressing diagnostics.
+- If using remote avatars/images with next/image, update image host allowlist in [next.config.ts](next.config.ts) under images.remotePatterns.
+- After editing [next.config.ts](next.config.ts), restart dev server to apply config changes.
 
 ## Validation Checklist
 
